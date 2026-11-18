@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import pandas as pd
@@ -21,14 +20,13 @@ REQUIRED_COLUMNS = {
 
 def build_trip_graph(road_segments: pd.DataFrame, trip_id: str) -> nx.MultiDiGraph:
     """
-    Build a directed road graph for one trip.
+    Build a directed road network graph for a single trip.
 
-    Each road segment is stored as a directed edge:
-        from_node_id -> to_node_id
-
-    The original arc_id is preserved as the MultiDiGraph edge key.
+    Each road segment becomes a directed edge from its starting node
+    to its ending node. The original arc_id is retained as the edge key.
     """
     missing = REQUIRED_COLUMNS - set(road_segments.columns)
+
     if missing:
         raise ValueError(f"Missing required columns: {sorted(missing)}")
 
@@ -72,10 +70,11 @@ def build_trip_graph(road_segments: pd.DataFrame, trip_id: str) -> nx.MultiDiGra
 
 
 def load_road_segments(path: str | Path) -> pd.DataFrame:
-    """Load and validate a road_segments Parquet file."""
+    """Load a road-segment Parquet file and check its required columns."""
     road_segments = pd.read_parquet(path)
 
     missing = REQUIRED_COLUMNS - set(road_segments.columns)
+
     if missing:
         raise ValueError(f"Missing required columns: {sorted(missing)}")
 
@@ -85,7 +84,7 @@ def load_road_segments(path: str | Path) -> pd.DataFrame:
 
 
 def build_all_trip_graphs(road_segments: pd.DataFrame) -> dict:
-    """Build a separate directed graph for every trip."""
+    """Create a separate directed road graph for each trip."""
     graphs = {}
 
     for trip_id, trip_data in road_segments.groupby("trip_id", sort=True):
