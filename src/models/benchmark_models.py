@@ -1,7 +1,7 @@
-"""
-Benchmark script for PathSnap Member 2: Model Experimentation & Comparison.
-Trains and compares 5 distinct algorithm families using Group-aware Cross-Validation.
-Evaluates on the student-testing partition and exports comparison tables, plots, and final model.
+"""Train and compare the benchmark models used in the PathSnap project.
+
+The script evaluates five model families, tests them on the student-testing
+partition, and saves the comparison results and selected model.
 """
 
 from pathlib import Path
@@ -31,15 +31,16 @@ from sklearn.metrics import (
 
 
 def compute_top1_accuracy(df_candidates: pd.DataFrame, probas: np.ndarray) -> float:
-    """
-    Computes Observation-level Top-1 Accuracy.
-    For each (trip_id, obs_idx), the candidate arc with the highest predicted
-    score is selected. Returns 1.0 if that candidate has target == 1, else 0.0.
+    """Measure whether the highest-scoring candidate is correct per observation.
+
+    Candidates are grouped by trip and observation index. The candidate with
+    the highest predicted score is selected, and its target contributes to the
+    final observation-level accuracy.
     """
     temp = df_candidates[['trip_id', 'obs_idx', 'target']].copy()
     temp['score'] = probas
     
-    # Identify the highest-scoring candidate per observation
+    # Find the top-scoring candidate for each observation.
     idx_max = temp.groupby(['trip_id', 'obs_idx'])['score'].idxmax()
     top1_hits = temp.loc[idx_max, 'target']
     return float(top1_hits.mean())
@@ -65,7 +66,7 @@ def run_benchmark(
     train_df = pd.read_parquet(train_path)
     test_df = pd.read_parquet(test_path)
     
-    # Filter training-eligible candidates
+    # Keep only candidates marked as suitable for training.
     train_df = train_df[train_df['training_eligible'] == True].reset_index(drop=True)
     test_df = test_df[test_df['training_eligible'] == True].reset_index(drop=True)
     
@@ -79,7 +80,7 @@ def run_benchmark(
     X_test = test_df[feature_cols].values
     y_test = test_df['target'].values
     
-    # 5 Model Families
+    # Define the five model families and the configurations used in this run.
     models = {
         "Logistic Regression": {
             "family": "Linear & Probabilistic",
@@ -130,7 +131,7 @@ def run_benchmark(
     results = []
     gkf = GroupKFold(n_splits=5)
     
-    # Representative fold for fast cross-validation comparison
+    # Use one GroupKFold split as the representative validation fold.
     train_fold_idx, val_fold_idx = next(gkf.split(X_train, y_train, groups=groups_train))
     
     print("\n[2/5] Benchmarking 5 model families with Group-Aware Validation...")
@@ -140,7 +141,7 @@ def run_benchmark(
         print(f"\n---> Training: {name} ({spec['family']})")
         model = spec["model"]
         
-        # Prepare CV fold training data
+        # Prepare the training portion of the selected validation fold.
         subsample = spec.get("subsample", None)
         if subsample and len(train_fold_idx) > subsample:
             rng = np.random.RandomState(42)
@@ -156,15 +157,20 @@ def run_benchmark(
         model.fit(X_tr, y_tr)
         fit_time = time.time() - t0
         
-        # Predict on validation fold
+        # Evaluate the model on the held-out validation fold.
         val_preds = model.predict(X_val)
-        val_probas = model.predict_proba(X_val)[:, 1] if hasattr(model, "predict_proba") else val_preds
+        val_probas = (
+            model.predict_proba(X_val)[:, 1]
+            if hasattr(model, "predict_proba")
+            else val_preds
+        )
         
         cv_macro_f1 = f1_score(y_val, val_preds, average="macro")
         cv_top1 = compute_top1_accuracy(val_df_fold, val_probas)
         cv_loss = log_loss(y_val, val_probas)
         
-        # Now refit on full training set (or subsample for k-NN) for student-test evaluation
+        # Refit using the full training partition before evaluating on student-test.
+        # k-NN uses a fixed-size sample to keep fitting practical.
         if subsample and len(X_train) > subsample:
             rng = np.random.RandomState(42)
             full_sub_idx = rng.choice(len(X_train), size=subsample, replace=False)
@@ -174,12 +180,16 @@ def run_benchmark(
             
         fitted_models[name] = model
         
-        # Predict on student_test partition
+        # Measure performance on the student-testing partition.
         t_infer_start = time.time()
         test_preds = model.predict(X_test)
         infer_time = (time.time() - t_infer_start) / (len(X_test) / 1000.0) # ms per 1k observations
         
-        test_probas = model.predict_proba(X_test)[:, 1] if hasattr(model, "predict_proba") else test_preds
+        test_probas = (
+            model.predict_proba(X_test)[:, 1]
+            if hasattr(model, "predict_proba")
+            else test_preds
+        )
         test_macro_f1 = f1_score(y_test, test_preds, average="macro")
         test_top1 = compute_top1_accuracy(test_df, test_probas)
         test_prec = precision_score(y_test, test_preds, zero_division=0)
@@ -229,8 +239,11 @@ def run_benchmark(
     print("\n" + df_results.to_string(index=False))
     
     print("\n[4/5] Serializing Champion Model...")
-    # Select best model based on Student-Test Top-1 Accuracy and Macro F1
-    best_row = df_results.sort_values(by=["Top-1 Accuracy", "Student-Test Macro F1-score"], ascending=False).iloc[0]
+    # Rank by Top-1 Accuracy first, then use Macro F1 as the tie-breaker.
+    best_row = df_results.sort_values(
+        by=["Top-1 Accuracy", "Student-Test Macro F1-score"],
+        ascending=False,
+    ).iloc[0]
     best_model_name = best_row["Model"]
     best_model = fitted_models[best_model_name]
     print(f"Selected Champion Model: {best_model_name}")
@@ -253,7 +266,7 @@ def run_benchmark(
     print("\n[5/5] Generating Comparison Plots...")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     
-    # Plot 1: Macro F1 Comparison
+    # Compare validation-fold and student-test Macro F1 scores.
     models_list = df_results["Model"]
     x = np.arange(len(models_list))
     width = 0.35
@@ -268,7 +281,7 @@ def run_benchmark(
     axes[0].legend()
     axes[0].grid(axis="y", linestyle="--", alpha=0.5)
     
-    # Plot 2: Observation Top-1 Accuracy
+    # Compare observation-level Top-1 Accuracy on student-test.
     colors = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#14b8a6"]
     axes[1].bar(models_list, df_results["Top-1 Accuracy"], color=colors)
     axes[1].set_ylabel("Top-1 Accuracy")
