@@ -1,9 +1,8 @@
-
 import networkx as nx
 
 
 def analyze_connectivity(graph: nx.MultiDiGraph) -> dict:
-    """Analyze connectivity of a directed road network."""
+    """Return connectivity statistics for a directed road network."""
 
     if graph.number_of_nodes() == 0:
         return {
@@ -38,5 +37,6 @@ def analyze_connectivity(graph: nx.MultiDiGraph) -> dict:
 
 
 def check_transition(graph, from_node, to_node) -> bool:
-    """Check whether a directed road connection exists."""
+    """Check if a directed edge connects the given nodes."""
+
     return graph.has_edge(from_node, to_node)
