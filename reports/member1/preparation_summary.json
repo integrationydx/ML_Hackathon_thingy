@@ -1,0 +1,40 @@
+{
+  "train": {
+    "trips": 80,
+    "observations": 208417,
+    "candidate_rows": 1084832,
+    "training_rows": 755694,
+    "eligible_observations": 143533,
+    "no_candidate_observations": 18230,
+    "known_reference_observations": 188425,
+    "derived_reference_candidate_misses": 4715,
+    "candidate_miss_rate_on_derived_known_labels": 0.025023218787315907,
+    "alignment_status": {
+      "aligned": 144443,
+      "ambiguous": 40981,
+      "unmatched": 19992,
+      "distant": 2993,
+      "restart": 8
+    },
+    "road_arcs": 3876904
+  },
+  "student_test": {
+    "trips": 10,
+    "observations": 19160,
+    "candidate_rows": 113639,
+    "training_rows": 76234,
+    "eligible_observations": 14203,
+    "no_candidate_observations": 0,
+    "known_reference_observations": 19157,
+    "derived_reference_candidate_misses": 82,
+    "candidate_miss_rate_on_derived_known_labels": 0.004280419689930573,
+    "alignment_status": {
+      "aligned": 14215,
+      "ambiguous": 4918,
+      "distant": 23,
+      "unmatched": 3,
+      "restart": 1
+    },
+    "road_arcs": 185041
+  }
+}
