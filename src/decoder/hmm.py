@@ -1,9 +1,11 @@
+"""Helpers for validating and preparing probabilities for HMM decoding."""
 
 import math
 
 
 def _validate_probability(value, name):
-    """Ensure a probability is finite and lies between 0 and 1."""
+    """Check that a probability is a finite number between zero and one."""
+
     value = float(value)
 
     if not math.isfinite(value) or not 0.0 <= value <= 1.0:
@@ -15,7 +17,8 @@ def _validate_probability(value, name):
 
 
 def _normalize_row(values, name, allow_all_zero=False):
-    """Normalize a list of non-negative probability scores."""
+    """Normalize probability scores in a row so they add up to one."""
+
     checked = [
         _validate_probability(value, name)
         for value in values
@@ -26,13 +29,15 @@ def _normalize_row(values, name, allow_all_zero=False):
     if total == 0:
         if allow_all_zero:
             return checked
+
         raise ValueError(f"{name} cannot contain only zero values")
 
     return [value / total for value in checked]
 
 
 def _to_log_probabilities(values):
-    """Convert probabilities to log probabilities safely."""
+    """Convert probabilities to log values, keeping zero as negative infinity."""
+
     return [
         math.log(value) if value > 0 else float("-inf")
         for value in values
@@ -44,18 +49,18 @@ def prepare_hmm_inputs(
     transition_probabilities,
 ):
     """
-    Validate and prepare probability inputs for HMM decoding.
+    Check the emission and transition probabilities before HMM decoding.
 
     emission_probabilities:
-        One list of candidate emission scores per observation.
+        A list of candidate emission scores for each observation.
 
     transition_probabilities:
-        One matrix between each consecutive pair of observations.
-        Matrix rows represent previous candidates.
-        Matrix columns represent current candidates.
+        A transition matrix for each pair of consecutive observations.
+        Rows correspond to the previous observation's candidates, while
+        columns correspond to the current observation's candidates.
 
     Returns:
-        log_emissions, log_transitions
+        Log-transformed emission and transition probabilities.
     """
 
     if not emission_probabilities:
@@ -63,6 +68,7 @@ def prepare_hmm_inputs(
 
     emissions = []
 
+    # Validate and normalize the candidate scores for each observation.
     for index, row in enumerate(emission_probabilities):
         if not row:
             raise ValueError(
@@ -74,6 +80,7 @@ def prepare_hmm_inputs(
         )
         emissions.append(_to_log_probabilities(normalized))
 
+    # There should be one transition matrix between each pair of observations.
     if len(transition_probabilities) != len(emissions) - 1:
         raise ValueError(
             "There must be one transition matrix between "
@@ -86,6 +93,7 @@ def prepare_hmm_inputs(
         previous_count = len(emissions[index])
         current_count = len(emissions[index + 1])
 
+        # Check that the matrix dimensions match the candidate counts.
         if len(matrix) != previous_count:
             raise ValueError(
                 f"Transition matrix {index} has an incorrect "
