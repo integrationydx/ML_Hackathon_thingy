@@ -15,9 +15,6 @@
     .status { white-space: pre-wrap; color: #334155; }
     .legend span { display: inline-block; margin-right: 16px; }
     .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 4px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: right; }
-    th:first-child, td:first-child { text-align: left; }
   </style>
 </head>
 <body>
@@ -31,13 +28,6 @@
     <button id="run">Run prediction</button>
     <textarea id="payload" aria-label="Prediction JSON"></textarea>
     <div id="status" class="status"></div>
-  </div>
-  <div class="card">
-    <h2>Model accuracy log</h2>
-    <table>
-      <thead><tr><th>Model</th><th>CV Macro F1</th><th>Top-1 Accuracy</th><th>Student-Test Macro F1</th><th>Log Loss</th></tr></thead>
-      <tbody id="metrics"><tr><td colspan="5">Loading...</td></tr></tbody>
-    </table>
   </div>
   <div class="card">
     <h2>Route map</h2>
@@ -91,15 +81,6 @@ document.querySelector("#run").onclick = async () => {
   } catch (error) { status.textContent = `Request failed: ${error.message}`; }
 };
 document.querySelector("#sample").click();
-fetch("/model-comparison").then(response => response.json()).then(data => {
-  document.querySelector("#metrics").innerHTML = data.models.map(item => `<tr>
-    <td>${item.Model}</td><td>${Number(item["CV Macro F1-score"]).toFixed(4)}</td>
-    <td>${Number(item["Top-1 Accuracy"]).toFixed(4)}</td>
-    <td>${Number(item["Student-Test Macro F1-score"]).toFixed(4)}</td>
-    <td>${Number(item["Log Loss"]).toFixed(4)}</td></tr>`).join("");
-}).catch(error => {
-  document.querySelector("#metrics").innerHTML = `<tr><td colspan="5">Could not load accuracy log: ${error.message}</td></tr>`;
-});
 </script>
 </body>
 </html>
