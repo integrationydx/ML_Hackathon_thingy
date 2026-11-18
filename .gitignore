@@ -1,0 +1,31 @@
+# Python environments
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Dataset (provided separately, never commit; evaluator data must stay out)
+data/
+data/raw/
+data/processed/
+*.track
+*.nodes
+*.arcs
+*.route
+
+# Secrets and OS files
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+.DS_Store
+
+# Large local artifacts
+artifacts/experiments/
+logs/
