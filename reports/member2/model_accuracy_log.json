@@ -1,0 +1,55 @@
+{
+  "metric_definition": {
+    "cv_macro_f1": "Macro F1 on the representative GroupKFold validation fold",
+    "student_test_top1_accuracy": "Observation-level candidate Top-1 accuracy",
+    "student_test_macro_f1": "Candidate-level Macro F1 on student_test",
+    "log_loss": "Binary candidate probability log loss on student_test"
+  },
+  "models": [
+    {
+      "Model": "Logistic Regression",
+      "CV Macro F1-score": 0.8363,
+      "Top-1 Accuracy": 0.88,
+      "Student-Test Macro F1-score": 0.9064,
+      "Log Loss": 0.1606,
+      "Training Time (s)": 0.33,
+      "Inference Time (ms/1k)": 0.0
+    },
+    {
+      "Model": "Distance-Weighted k-NN",
+      "CV Macro F1-score": 0.8428,
+      "Top-1 Accuracy": 0.8811,
+      "Student-Test Macro F1-score": 0.9169,
+      "Log Loss": 0.3879,
+      "Training Time (s)": 0.06,
+      "Inference Time (ms/1k)": 0.01
+    },
+    {
+      "Model": "Random Forest",
+      "CV Macro F1-score": 0.8576,
+      "Top-1 Accuracy": 0.8883,
+      "Student-Test Macro F1-score": 0.9258,
+      "Log Loss": 0.1168,
+      "Training Time (s)": 10.58,
+      "Inference Time (ms/1k)": 0.0
+    },
+    {
+      "Model": "HistGradientBoosting",
+      "CV Macro F1-score": 0.8581,
+      "Top-1 Accuracy": 0.8878,
+      "Student-Test Macro F1-score": 0.925,
+      "Log Loss": 0.1146,
+      "Training Time (s)": 1.7,
+      "Inference Time (ms/1k)": 0.0
+    },
+    {
+      "Model": "Multi-Layer Perceptron (MLP)",
+      "CV Macro F1-score": 0.8553,
+      "Top-1 Accuracy": 0.8911,
+      "Student-Test Macro F1-score": 0.9273,
+      "Log Loss": 0.1135,
+      "Training Time (s)": 14.14,
+      "Inference Time (ms/1k)": 0.0
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "champion_model": "Multi-Layer Perceptron (MLP)",
+  "family": "Neural Network",
+  "features": [
+    "distance_m",
+    "heading_delta_deg",
+    "projection_ratio",
+    "distance_rank",
+    "segment_length_m",
+    "speed_mps",
+    "dt_s",
+    "heading_valid",
+    "gap_before",
+    "zero_length_arc"
+  ],
+  "cv_macro_f1": 0.8553,
+  "test_top1_accuracy": 0.8911,
+  "test_macro_f1": 0.9273,
+  "training_timestamp": "2026-11-18 11:02:28"
+}
