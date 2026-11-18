@@ -1,4 +1,3 @@
-
 import pandas as pd
 
 
@@ -7,8 +6,8 @@ def validate_candidate_mapping(
     road_segments: pd.DataFrame
 ) -> pd.DataFrame:
     """
-    Check whether every candidate road exists in the
-    road network for the corresponding trip.
+    Check whether each candidate road segment is present
+    in the road network for its corresponding trip.
     """
 
     required_candidates = {"trip_id", "arc_id"}
@@ -54,6 +53,8 @@ def validate_candidate_mapping(
 
 
 def calculate_mapping_coverage(mapping: pd.DataFrame) -> dict:
+    """Calculate the percentage of candidates found in the road network."""
+
     total = len(mapping)
     valid = int(mapping["exists_in_network"].sum())
     invalid = total - valid
