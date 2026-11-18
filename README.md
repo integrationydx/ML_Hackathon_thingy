@@ -1,7 +1,5 @@
 # PathSnap: GPS Map-Matching and Route Reconstruction
 
-**Team:** Asphalt-Anarchy
-
 **PES2UG24CS052** • **PES2UG24CS55** • **PES2UG24CS010** • **PES2UG24CS015**
 
 PathSnap converts noisy GPS observations into candidate road arcs, predicts the most likely road for each observation, and reconstructs a coherent route with HMM/Viterbi-style decoding utilities. The project includes data preparation, road-network indexing, model benchmarking, Folium maps, a FastAPI backend, and a browser evaluator UI.
