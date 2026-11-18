@@ -1,34 +1,3 @@
-
-import math
-
-
-def viterbi_decode(log_emissions, log_transitions):
-    """
-    Find the most likely sequence of road candidates
-    using the Viterbi algorithm.
-
-    log_emissions:
-        Emission log probabilities for each observation.
-
-    log_transitions:
-        Transition log probabilities between observations.
-
-    Returns:
-        List of selected candidate indices.
-    """
-
-    if not log_emissions:
-        raise ValueError("At least one observation is required")
-
-    num_observations = len(log_emissions)
-
-    for index, row in enumerate(log_emissions):
-        if not row:
-            raise ValueError(
-                f"Observation {index} has no candidates"
-            )
-
-        if any(math.isnan(value) for value in row):
             raise ValueError("Emission values cannot be NaN")
 
     if len(log_transitions) != num_observations - 1:
@@ -36,6 +5,8 @@ def viterbi_decode(log_emissions, log_transitions):
             "Incorrect number of transition matrices"
         )
 
+    # Store the best scores found so far and the previous candidate
+    # that led to each score.
     scores = [list(log_emissions[0])]
     backpointers = []
 
@@ -43,6 +14,8 @@ def viterbi_decode(log_emissions, log_transitions):
         previous_scores = scores[-1]
         transition_matrix = log_transitions[t - 1]
 
+        # The transition matrix must match the candidate counts
+        # in the previous and current observations.
         if len(transition_matrix) != len(previous_scores):
             raise ValueError("Incorrect transition matrix rows")
 
@@ -59,6 +32,8 @@ def viterbi_decode(log_emissions, log_transitions):
             best_score = float("-inf")
             best_previous = None
 
+            # Check every possible previous candidate and keep the
+            # one that gives the highest cumulative log probability.
             for previous_index, previous_score in enumerate(
                 previous_scores
             ):
@@ -80,6 +55,7 @@ def viterbi_decode(log_emissions, log_transitions):
         scores.append(current_scores)
         backpointers.append(current_backpointers)
 
+    # Start backtracking from the candidate with the best final score.
     final_index = max(
         range(len(scores[-1])),
         key=lambda index: scores[-1][index]
@@ -92,6 +68,7 @@ def viterbi_decode(log_emissions, log_transitions):
 
     best_path = [final_index]
 
+    # Follow the stored pointers to reconstruct the full candidate path.
     for pointers in reversed(backpointers):
         previous_index = pointers[best_path[-1]]
 
