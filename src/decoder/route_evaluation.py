@@ -1,11 +1,10 @@
-
 from difflib import SequenceMatcher
 
 
 def evaluate_route(predicted_route, reference_route):
     """
-    Evaluate a predicted road sequence against
-    the reference road sequence.
+    Compare a predicted road sequence with the reference route
+    and calculate how closely they match.
     """
 
     if predicted_route is None or reference_route is None:
