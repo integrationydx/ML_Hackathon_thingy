@@ -1,4 +1,7 @@
-"""Pure inference preparation plus an explicit, separate development label step."""
+"""Prepare GPS observations and road candidates for PathSnap inference.
+
+Reference-route labels are added only when the development-only option is enabled.
+"""
 import argparse
 from dataclasses import dataclass
 import json
@@ -30,6 +33,7 @@ class PreparedTrip:
 
 def prepare_trip(trip: Trip, *, radius_m=50.0, max_candidates=8, gap_s=60.0,
                  include_labels=False, reference_radius_m=100.0) -> PreparedTrip:
+    """Build observation, candidate, road-segment, and optional label tables."""
     if (not np.isfinite([radius_m, gap_s, reference_radius_m]).all()
             or min(radius_m, gap_s, reference_radius_m) <= 0
             or isinstance(max_candidates, bool) or not isinstance(max_candidates, int)
@@ -42,7 +46,7 @@ def prepare_trip(trip: Trip, *, radius_m=50.0, max_candidates=8, gap_s=60.0,
     gaps = dt > gap_s
     headings = (np.degrees(np.arctan2(displacement[:, 0], displacement[:, 1])) + 360) % 360
     heading_valid = (distance >= 3.0) & (dt > 0) & ~gaps
-    # The displacement across a gap is not a valid instantaneous speed estimate.
+    # A long GPS gap makes the displacement unsuitable for estimating speed.
     speed = np.divide(distance, dt, out=np.zeros_like(dt), where=(dt > 0) & ~gaps)
     observations = pd.DataFrame(dict(trip_id=trip.trip_id, obs_idx=np.arange(len(dt)),
         longitude=trip.track[:, 0], latitude=trip.track[:, 1], timestamp_s=trip.track[:, 2],
@@ -66,7 +70,7 @@ def prepare_trip(trip: Trip, *, radius_m=50.0, max_candidates=8, gap_s=60.0,
                 gap_before=bool(obs.gap_before), zero_length_arc=bool(index.lengths[arc] == 0)))
     observations['num_candidates'] = counts
     candidates = pd.DataFrame(rows, columns=CANDIDATE_COLUMNS)
-    # Raw WGS84 endpoints allow Member 3 to rebuild a directed graph with all arcs.
+    # Keep the original geographic endpoints so the road graph can be rebuilt later.
     roads = pd.DataFrame(dict(trip_id=trip.trip_id, arc_id=np.arange(len(trip.arcs)),
         from_node_id=trip.arcs[:, 0], to_node_id=trip.arcs[:, 1],
         from_lon=trip.nodes[trip.arcs[:, 0], 0], from_lat=trip.nodes[trip.arcs[:, 0], 1],
@@ -77,7 +81,8 @@ def prepare_trip(trip: Trip, *, radius_m=50.0, max_candidates=8, gap_s=60.0,
         from src.data.alignment import align_reference
         labels = align_reference(index, observations, radius_m=reference_radius_m)
         candidate_arcs = candidates.groupby('obs_idx').arc_id.agg(set).to_dict() if len(candidates) else {}
-        # Unknown reference is NA, never incorrectly reported as a candidate miss.
+        # If the reference is unknown, leave candidate_miss empty rather than
+        # treating it as a confirmed miss.
         labels['candidate_miss'] = pd.array([
             None if pd.isna(r.reference_arc_id) else int(r.reference_arc_id) not in candidate_arcs.get(r.obs_idx, set())
             for r in labels.itertuples()], dtype='boolean')
@@ -86,7 +91,7 @@ def prepare_trip(trip: Trip, *, radius_m=50.0, max_candidates=8, gap_s=60.0,
 
 
 def training_rows(prepared):
-    """Explicit development join; inference output never contains target columns."""
+    """Add reference labels for development without changing inference output."""
     if prepared.labels is None:
         raise ValueError('Training rows require development labels')
     merged = prepared.candidates.merge(prepared.labels, on=['trip_id', 'obs_idx'], validate='many_to_one')
@@ -96,6 +101,7 @@ def training_rows(prepared):
 
 def run_partition(data_dir, output, *, radius_m=50, max_candidates=8, gap_s=60,
                   include_labels=False, reference_radius_m=100, limit=None):
+    """Process a dataset partition and save its tables and manifest."""
     destination = Path(output)
     if destination.exists():
         raise FileExistsError(f'Use a new output directory; refusing stale data in {destination}')
@@ -104,8 +110,8 @@ def run_partition(data_dir, output, *, radius_m=50, max_candidates=8, gap_s=60,
         if limit <= 0:
             raise ValueError('limit must be positive')
         trips = trips[:limit]
-    # Stream each trip to a single output file; never hold the full road network
-    # collection or multi-million-row candidate table in RAM.
+    # Write each trip as it is processed instead of keeping the entire dataset
+    # and all candidate rows in memory.
     import pyarrow as pa
     import pyarrow.parquet as pq
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -124,7 +130,7 @@ def run_partition(data_dir, output, *, radius_m=50, max_candidates=8, gap_s=60,
                 tables['reference_labels'] = prepared.labels
                 tables['train_features'] = training_rows(prepared)
             for name, frame in tables.items():
-                # Explicit types preserve schemas even for entirely empty tables.
+                # Set the column types explicitly, including when a table is empty.
                 integer_columns = {'obs_idx', 'segment_id', 'candidate_idx', 'arc_id',
                     'from_node_id', 'to_node_id', 'distance_rank', 'num_candidates',
                     'reference_arc_id', 'route_position', 'target'}
@@ -176,6 +182,7 @@ def run_partition(data_dir, output, *, radius_m=50, max_candidates=8, gap_s=60,
 
 
 def main():
+    """Read command-line options and start partition processing."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', required=True)
     parser.add_argument('--output-dir', required=True)
